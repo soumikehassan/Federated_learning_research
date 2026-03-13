@@ -1,4 +1,4 @@
-# Dynamic Privacy-Preserving Federated Learning with Multimodal Swin Transformers and Reinforcement Learning for Collaborative Medical Diagnostics
+# Dynamic Privacy-Preserving Federated Learning with Swin Transformers and Reinforcement Learning for Collaborative Medical Diagnostics
 
 <div align="center">
 
@@ -70,7 +70,7 @@ This repository presents a novel **Dynamic Privacy-Preserving Federated Learning
 | Client | Dataset | Classes | Task |
 |--------|---------|---------|------|
 | client_0 | [Augmented Alzheimer MRI](https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset) | 4 | MildDemented, ModerateDemented, NonDemented, VeryMildDemented |
-| client_1 | [Retinal Disease](https://www.kaggle.com/datasets/gunavenkatdoddi/eye-diseases-classification) | 7 | Diabetic Retinopathy, Disc Edema, Healthy, Macular Degeneration, Myopia, Retinal Detachment, Retinitis Pigmentosa |
+| client_1 | [Retinal Disease](https://www.kaggle.com/datasets/alemranp/ratinal-deasis) | 7 | Diabetic Retinopathy, Disc Edema, Healthy, Macular Degeneration, Myopia, Retinal Detachment, Retinitis Pigmentosa |
 | client_2 | [TB Chest X-Ray](https://www.kaggle.com/datasets/tawsifurrahman/tuberculosis-tb-chest-xray-dataset) | 2 | Normal, Tuberculosis |
 
 ---
