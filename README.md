@@ -139,7 +139,7 @@ fl_project_v2/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/fl-medical-diagnostics.git
+https://github.com/soumikehassan/Federated_learning_research.git
 cd fl-medical-diagnostics/fl_project_v2
 
 # 2. Create virtual environment
