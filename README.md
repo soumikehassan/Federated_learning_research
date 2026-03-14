@@ -1,4 +1,4 @@
-# Dynamic Privacy-Preserving Federated Learning with Swin Transformers and Reinforcement Learning for Collaborative Medical Diagnostics
+# Privacy-Preserving Federated Learning for Medical Expert Systems: RL-Based Client Selection with Differential Privacy
 
 <div align="center">
 
@@ -7,6 +7,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Kaggle-lightgrey)
+![Domain](https://img.shields.io/badge/Domain-Medical%20AI-red)
 
 </div>
 
@@ -14,17 +15,82 @@
 
 ## Overview
 
-This repository presents a novel **Dynamic Privacy-Preserving Federated Learning (DPPFL)** framework for collaborative medical image diagnostics. The system enables multiple hospitals to train a shared AI model **without sharing any patient data**, using:
+This repository implements a **Privacy-Preserving Federated Learning Framework** for **Medical Expert Systems**. The framework enables hospitals and clinical institutions to collaboratively train diagnostic AI models **without sharing patient data**, addressing critical privacy requirements in healthcare (HIPAA, GDPR compliance).
 
-- **Swin Transformer** — state-of-the-art vision backbone for medical image classification
-- **Reinforcement Learning (DQN)** — intelligent client selection to maximize convergence
-- **Differential Privacy (DP)** — mathematical privacy guarantee (ε < 10 for medical compliance)
-- **Secure Multi-Party Computation (SMPC)** — cryptographic secure aggregation
-- **4 Aggregation Methods** — FedAvg, FedProx, FedMedian, SCAFFOLD for comparison
+### Medical Expert System Context
+
+Modern medical expert systems require large, diverse datasets to achieve clinical-grade performance. However, patient data privacy regulations prevent hospitals from sharing medical images directly. This framework solves this problem through:
+
+| Challenge | Our Solution |
+|-----------|--------------|
+| Patient data cannot leave hospitals | **Federated Learning** — model travels, not data |
+| Privacy regulations (HIPAA/GDPR) | **Differential Privacy** — mathematical privacy guarantee |
+| Heterogeneous hospital data | **RL-based client selection** — intelligently select training partners |
+| Cross-specialty collaboration | **Multi-domain support** — neurology, ophthalmology, pulmonology |
+
+### Clinical Applications
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     MEDICAL EXPERT SYSTEM                               │
+│                                                                         │
+│   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        │
+│   │   NEUROLOGY     │  │  OPHTHALMOLOGY  │  │  PULMONOLOGY    │        │
+│   │                 │  │                 │  │                 │        │
+│   │ Alzheimer's     │  │ Diabetic        │  │ Tuberculosis    │        │
+│   │ Dementia        │  │ Retinopathy     │  │ Detection       │        │
+│   │ Detection       │  │ Macular Degen.  │  │                 │        │
+│   │                 │  │ Retinal Detach. │  │                 │        │
+│   │ Brain MRI       │  │ Fundus Images   │  │ Chest X-Ray     │        │
+│   └────────┬────────┘  └────────┬────────┘  └────────┬────────┘        │
+│            │                    │                    │                  │
+│            └────────────────────┼────────────────────┘                  │
+│                                 │                                       │
+│                    ┌────────────▼────────────┐                         │
+│                    │   FEDERATED SERVER      │                         │
+│                    │   (No raw patient data) │                         │
+│                    │   • RL Client Selector  │                         │
+│                    │   • DP Privacy Guard    │                         │
+│                    │   • Model Aggregator    │                         │
+│                    └─────────────────────────┘                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Key Contributions for Medical Expert Systems
+
+| Contribution | Description | Relevance to Expert Systems |
+|--------------|-------------|----------------------------|
+| **Privacy-Preserving FL** | DP + SMPC for HIPAA/GDPR compliance | Enables clinical deployment |
+| **RL Client Selection** | DQN learns optimal hospital participation | Maximizes knowledge transfer |
+| **Cross-Domain Learning** | Neurology + Ophthalmology + Pulmonology | Multi-specialty expert system |
+| **Non-IID Robustness** | Dirichlet partitioning for realistic data skew | Handles hospital heterogeneity |
+| **Task Fairness** | Ensures no medical domain is left behind | Balanced diagnostic capability |
+
+---
+
+## Medical Datasets
+
+The framework is validated on three clinically relevant medical imaging tasks:
+
+| Clinical Domain | Dataset | Classes | Diagnostic Task | Modality |
+|-----------------|---------|---------|-----------------|----------|
+| **Neurology** | [Augmented Alzheimer MRI](https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset) | 4 | MildDemented, ModerateDemented, NonDemented, VeryMildDemented | MRI |
+| **Ophthalmology** | [Retinal Disease](https://www.kaggle.com/datasets/alemranp/ratinal-deasis) | 7 | Diabetic Retinopathy, Disc Edema, Macular Degeneration, Myopia, Retinal Detachment, Retinitis Pigmentosa, Healthy | Fundus |
+| **Pulmonology** | [TB Chest X-Ray](https://www.kaggle.com/datasets/tawsifurrahman/tuberculosis-tb-chest-xray-dataset) | 2 | Normal, Tuberculosis | X-Ray |
+
+### Why These Datasets?
+
+- **Neurodegenerative disease**: Early Alzheimer's detection from brain scans
+- **Diabetic complications**: Leading cause of blindness in diabetic patients
+- **Infectious disease**: TB affects 10M+ people annually worldwide
 
 ---
 
 ## Architecture
+
+### System Components
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -39,91 +105,61 @@ This repository presents a novel **Dynamic Privacy-Preserving Federated Learning
 └────────────┬──────────────┬──────────────┬──────────────────┘
              │              │              │
     ┌────────▼───┐  ┌───────▼────┐  ┌─────▼──────┐
-    │  Client 0  │  │  Client 1  │  │  Client 2  │
-    │ Alzheimer  │  │  Retinal   │  │  TB X-Ray  │
-    │  4 Classes │  │  7 Classes │  │  2 Classes │
+    │ Hospital A │  │ Hospital B │  │ Hospital C │
+    │ Neurology  │  │Ophthalmol. │  │Pulmonology │
     │ Swin-Tiny  │  │ Swin-Tiny  │  │ Swin-Tiny  │
     │  DP Noise  │  │  DP Noise  │  │  DP Noise  │
     └────────────┘  └────────────┘  └────────────┘
 ```
 
----
+### Privacy Guarantees for Medical Data
 
-## Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **Heterogeneous FL** | 3 clients with different datasets and different number of classes |
-| **Swin Transformer** | 27.5M parameter pretrained backbone (ImageNet weights) |
-| **DQN Client Selection** | RL agent learns which clients to select each round |
-| **Differential Privacy** | Gaussian mechanism — gradient clipping + noise injection |
-| **SMPC Aggregation** | Additive secret sharing — server never sees individual updates |
-| **4 Aggregation Methods** | FedAvg, FedProx, FedMedian, SCAFFOLD — all compared |
-| **Full Metrics Suite** | 8 metric categories — classification, privacy, RL, FL, fairness, ablation |
-| **CSV Export** | All results automatically saved to CSV for paper tables |
-| **Publication Plots** | Training curves, confusion matrices, method comparison, fairness analysis |
-
----
-
-## Datasets
-
-| Client | Dataset | Classes | Task |
-|--------|---------|---------|------|
-| client_0 | [Augmented Alzheimer MRI](https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset) | 4 | MildDemented, ModerateDemented, NonDemented, VeryMildDemented |
-| client_1 | [Retinal Disease](https://www.kaggle.com/datasets/alemranp/ratinal-deasis) | 7 | Diabetic Retinopathy, Disc Edema, Healthy, Macular Degeneration, Myopia, Retinal Detachment, Retinitis Pigmentosa |
-| client_2 | [TB Chest X-Ray](https://www.kaggle.com/datasets/tawsifurrahman/tuberculosis-tb-chest-xray-dataset) | 2 | Normal, Tuberculosis |
+| Mechanism | Protection Level | Medical Compliance |
+|-----------|-----------------|-------------------|
+| **Differential Privacy** | ε < 10 | HIPAA Safe Harbor |
+| **Secure Aggregation (SMPC)** | Server never sees raw updates | GDPR Article 32 |
+| **Federated Learning** | Data never leaves hospital | Data minimization principle |
 
 ---
 
 ## Project Structure
 
 ```
-fl_project_v2/
+Federated_learning_research/
 │
 ├── config.py                          # All hyperparameters and paths
 ├── main.py                            # Main training loop
+├── run_all_experiments.py             # Run all paper experiments
 ├── feasibility_test.py                # Quick sanity check
 │
+├── experiments/                       # Paper experiments (NEW)
+│   ├── README.md                      # Experiment overview
+│   ├── 1_rl_effectiveness/            # RL vs baselines
+│   ├── 2_privacy_tradeoff/            # DP analysis
+│   └── 3_component_ablation/          # Ablation study
+│
 ├── models/
-│   └── swin_transformer.py            # Swin Transformer builder (timm)
+│   └── swin_transformer.py            # Swin Transformer backbone
 │
 ├── clients/
-│   └── federated_client.py            # Local training + DP + metrics collection
+│   └── federated_client.py            # Local training + DP
 │
 ├── server/
-│   ├── federated_server.py            # Server aggregation + logging
+│   ├── federated_server.py            # Aggregation + logging
 │   └── aggregation_methods.py         # FedAvg, FedProx, FedMedian, SCAFFOLD
 │
 ├── utils/
 │   ├── differential_privacy.py        # Gaussian DP mechanism
-│   ├── secure_aggregation.py          # SMPC / Secure Aggregation
-│   ├── rl_client_selector.py          # DQN reinforcement learning agent
-│   ├── evaluation_metrics.py          # All 8 metric categories + CSV logger
+│   ├── secure_aggregation.py          # SMPC implementation
+│   ├── rl_client_selector.py          # DQN agent
+│   ├── data_partitioner.py            # Dirichlet non-IID partitioning
+│   ├── evaluation_metrics.py          # 8 metric categories
 │   └── metrics.py                     # Plotting utilities
 │
 ├── data/
-│   └── dataset.py                     # Dataset loader (auto-discovers classes)
+│   └── dataset.py                     # Medical image dataset loader
 │
 └── results/                           # Auto-generated results
-    ├── FedAvg/
-    │   ├── training_history.json
-    │   ├── training_curves.png
-    │   ├── classification_metrics_FedAvg.png
-    │   ├── confusion_matrices_FedAvg.png
-    │   └── best_model.pt
-    ├── FedProx/
-    ├── FedMedian/
-    ├── SCAFFOLD/
-    ├── method_comparison.png
-    ├── fairness_analysis.png
-    ├── round_metrics.csv
-    ├── client_test_metrics.csv
-    ├── privacy_metrics.csv
-    ├── fairness_metrics.csv
-    ├── rl_metrics.csv
-    ├── fl_metrics.csv
-    ├── computational_metrics.csv
-    └── method_comparison.csv
 ```
 
 ---
@@ -132,33 +168,26 @@ fl_project_v2/
 
 ### Prerequisites
 - Python 3.11
-- Windows / Linux / macOS
-- NVIDIA GPU (optional but recommended)
+- NVIDIA GPU (recommended for medical image processing)
+- 8GB+ RAM
 
 ### Setup
 
 ```bash
 # 1. Clone the repository
-https://github.com/soumikehassan/Federated_learning_research.git
-cd fl-medical-diagnostics/fl_project_v2
+git clone https://github.com/yourusername/Federated_learning_research.git
+cd Federated_learning_research
 
 # 2. Create virtual environment
 python -m venv fl_env
+source fl_env/bin/activate  # Linux/Mac
+# or: .\fl_env\Scripts\Activate.ps1  # Windows
 
-# 3. Activate (Windows)
-.\fl_env\Scripts\Activate.ps1
-
-# Activate (Linux/Mac)
-source fl_env/bin/activate
-
-# 4. Install PyTorch (CPU)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
-# Install PyTorch (GPU — CUDA 11.8)
+# 3. Install PyTorch (GPU — CUDA 11.8)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
-# 5. Install all other dependencies
-pip install timm scikit-learn matplotlib numpy pandas psutil
+# 4. Install dependencies
+pip install timm scikit-learn matplotlib numpy pandas psutil scipy
 ```
 
 ---
@@ -169,9 +198,12 @@ Update dataset paths in `config.py`:
 
 ```python
 DATASET_PATHS = {
-    "client_0": r"path/to/AugmentedAlzheimerDataset",
-    "client_1": r"path/to/Retinal_Disease",
-    "client_2": r"path/to/TB_Chest_Radiography_Database",
+    "client_0_0": r"path/to/AugmentedAlzheimerDataset",  # Neurology
+    "client_0_1": r"path/to/AugmentedAlzheimerDataset",
+    "client_1_0": r"path/to/Retinal_Disease",            # Ophthalmology
+    "client_1_1": r"path/to/Retinal_Disease",
+    "client_2_0": r"path/to/TB_Chest_Radiography",       # Pulmonology
+    "client_2_1": r"path/to/TB_Chest_Radiography",
 }
 ```
 
@@ -179,199 +211,150 @@ DATASET_PATHS = {
 
 ## Usage
 
-### Quick sanity check
+### Quick Test (sanity check)
 ```bash
 python feasibility_test.py
 ```
 
-### Test run (fast — ~1 hour CPU)
+### Run Single Experiment
 ```bash
+# Test run (fast)
 python main.py --rounds 3 --local-epochs 1 --max-samples 50
-```
 
-### Single aggregation method
-```bash
+# Full training
 python main.py --rounds 20 --local-epochs 3 --method FedAvg
-python main.py --rounds 20 --local-epochs 3 --method FedProx
-python main.py --rounds 20 --local-epochs 3 --method FedMedian
-python main.py --rounds 20 --local-epochs 3 --method SCAFFOLD
+
+# With different client selection
+python main.py --selection rl      # RL-based (default)
+python main.py --selection random  # Random selection
+python main.py --selection all     # All clients (baseline)
 ```
 
-### All 4 methods compared
+### Run All Paper Experiments
 ```bash
-python main.py --rounds 20 --local-epochs 3
+python run_all_experiments.py --seeds 3 --rounds 20
 ```
 
-### With SMPC (Secure Aggregation)
-```bash
-python main.py --rounds 20 --local-epochs 3 --use-smpc
+### CLI Options
 ```
-
-### Noise sensitivity experiment (sigma = 0.5, 1.0, 2.0)
-```bash
-python main.py --rounds 20 --local-epochs 3 --noise-sweep
-```
-
-### Disable Differential Privacy
-```bash
-python main.py --rounds 20 --local-epochs 3 --no-dp
-```
-
-### All CLI options
-```
---rounds        Number of federated rounds (default: 20)
---local-epochs  Local training epochs per round (default: 3)
+--rounds        Federated rounds (default: 20)
+--local-epochs  Local training epochs (default: 3)
 --batch-size    Batch size (default: 16)
 --lr            Learning rate (default: 1e-4)
---model-size    Swin size: tiny | small | base (default: tiny)
 --method        FedAvg | FedProx | FedMedian | SCAFFOLD | all
+--selection     rl | random | all
 --no-dp         Disable differential privacy
 --use-smpc      Enable secure aggregation
---no-pretrain   Train from scratch (no ImageNet weights)
---max-samples   Limit samples per class (for quick testing)
 --noise-sweep   Run sigma = 0.5, 1.0, 2.0 comparison
+--max-samples   Limit samples per class (for quick testing)
 ```
+
+---
+
+## Experiments (for Paper)
+
+The `experiments/` folder contains 3 structured experiments:
+
+| # | Experiment | Medical Relevance | Hypothesis |
+|---|------------|-------------------|------------|
+| 1 | [RL Effectiveness](experiments/1_rl_effectiveness/) | Optimal hospital selection for diagnosis | RL outperforms random, especially under data heterogeneity |
+| 2 | [Privacy Tradeoff](experiments/2_privacy_tradeoff/) | HIPAA/GDPR compliance vs accuracy | DP provides ε < 10 with < 5% accuracy loss |
+| 3 | [Component Ablation](experiments/3_component_ablation/) | System design validation | Each component contributes to medical diagnosis |
+
+Each experiment has:
+- `experiment.py` — runnable script
+- `README.md` — hypothesis + "if proven" / "if not proven" guidance
+- `figures/` — publication-ready plots
 
 ---
 
 ## Evaluation Metrics
 
-### 1. Classification Metrics (per client)
-| Metric | Formula |
-|--------|---------|
-| Accuracy | Correct / Total |
-| Precision | TP / (TP + FP) |
-| Recall (Sensitivity) | TP / (TP + FN) |
-| F1-Score | 2 × (P×R) / (P+R) |
-| AUC-ROC | Area under ROC curve |
-| Specificity | TN / (TN + FP) |
-| Cohen's Kappa | Agreement beyond chance |
-| Confusion Matrix | Per-class TP/FP/TN/FN |
+### Medical Diagnostic Metrics
+| Metric | Clinical Interpretation |
+|--------|------------------------|
+| **Sensitivity (Recall)** | Ability to detect disease (minimize false negatives) |
+| **Specificity** | Ability to identify healthy cases (minimize false positives) |
+| **AUC-ROC** | Overall diagnostic discrimination ability |
+| **F1-Score** | Balance between precision and recall |
 
-### 2. Privacy Metrics
-| Metric | Target |
-|--------|--------|
-| Privacy Budget (ε) | ε < 10 for medical |
-| Privacy-Accuracy Tradeoff | Show the curve |
-| Noise Multiplier Sensitivity | σ = 0.5, 1.0, 2.0 |
-| Membership Inference AUC | Closer to 0.5 = better |
+### Privacy Metrics
+| Metric | Medical Requirement |
+|--------|---------------------|
+| **Privacy Budget (ε)** | ε < 10 for HIPAA compliance |
+| **MIA Resistance** | Protect against membership inference attacks |
 
-### 3. RL Metrics
-- Cumulative reward, Selection frequency, Selection diversity entropy
-- RL vs Random selection comparison, Convergence speed
-
-### 4. FL Metrics
-- Global convergence rate, Communication cost, Client drift
-- Local vs Global accuracy gap, Rounds to convergence
-
-### 5. Fairness Metrics
-- Per-client accuracy variance, Worst-client performance
-- Fairness gap (target < 0.15), Participation equity
-
-### 6. Computational Metrics
-- Training time per round, Total training time
-- Model parameters (27.5M for Swin-Tiny), Memory usage, Inference time
+### Federated Learning Metrics
+| Metric | System Performance |
+|--------|-------------------|
+| **Fairness Gap** | Equal diagnostic capability across specialties |
+| **Convergence Speed** | Rounds until clinical-grade accuracy |
+| **Communication Cost** | Bandwidth requirements for hospital networks |
 
 ---
 
-## Demo Results (5 rounds, 1 epoch, test data)
+## Results Summary
 
-| Method | Global Acc | Fairness Gap | Privacy ε |
-|--------|-----------|-------------|-----------|
-| **FedAvg** | **0.3333** | 0.4500 | 1.77 |
-| FedProx | 0.2333 | 0.5000 | 1.77 |
-| FedMedian | 0.2000 | 0.4000 | 1.20 |
-| SCAFFOLD | 0.1818 | 0.4000 | 1.31 |
+### Medical Diagnostic Performance
 
-> Note: Results above use minimal test settings (2 rounds, 1 epoch, 50 samples).
-> Full dataset results (20 rounds, 3 epochs) show significantly higher accuracy.
+| Clinical Domain | Full System | No RL | No DP | No Fairness |
+|-----------------|-------------|-------|-------|-------------|
+| **Neurology (Alzheimer)** | TBD | TBD | TBD | TBD |
+| **Ophthalmology (Retinal)** | TBD | TBD | TBD | TBD |
+| **Pulmonology (TB)** | TBD | TBD | TBD | TBD |
+| **Overall** | TBD | TBD | TBD | TBD |
+
+*Results will be populated after running experiments.*
 
 ---
 
 ## Running on Kaggle GPU
 
+For hospitals without local GPU infrastructure:
+
 1. Upload datasets to Kaggle Datasets
-2. Create a new notebook → Settings → GPU T4
-3. Add datasets and override paths:
+2. Create notebook → Settings → GPU T4
+3. Override paths:
 
 ```python
-import sys
+import sys, config
 sys.path.insert(0, '/kaggle/input/fl-project-code')
 
-import config
 config.DATASET_PATHS = {
-    "client_0": "/kaggle/input/alzheimer-fl/AugmentedAlzheimerDataset",
-    "client_1": "/kaggle/input/retinal-fl/Ratinal_Deasis",
-    "client_2": "/kaggle/input/tb-fl/TB_Chest_Radiography_Database",
+    "client_0_0": "/kaggle/input/alzheimer-fl/AugmentedAlzheimerDataset",
+    "client_1_0": "/kaggle/input/retinal-fl/Ratinal_Deasis",
+    "client_2_0": "/kaggle/input/tb-fl/TB_Chest_Radiography_Database",
+    # ... (add all 6 clients)
 }
 config.RESULTS_DIR = "/kaggle/working/results"
-config.NUM_WORKERS = 2
-config.BATCH_SIZE  = 32
 ```
-
-4. Run training:
-```python
-import subprocess
-subprocess.run(["python", "main.py", "--rounds", "20", "--local-epochs", "3"])
-```
-
-**Expected time on Kaggle T4 GPU:** ~1.5 hours per method, ~6 hours for all 4 methods.
 
 ---
 
 ## Privacy Guarantee
 
-The framework implements the **Gaussian Mechanism** for (ε, δ)-Differential Privacy:
+The framework implements **(ε, δ)-Differential Privacy** suitable for medical data:
 
 ```
-ε = sqrt(2 × log(1.25/δ)) / σ × sqrt(T × q)
+ε = √(2 × log(1.25/δ)) / σ × √(T × q)
 ```
 
-Where:
-- `σ` = noise multiplier (default: 1.0)
-- `T` = number of training steps
-- `q` = sampling rate
-- `δ` = 1e-5 (fixed)
-
-**Target:** ε < 10 for medical research applications.
+| Parameter | Value | Medical Justification |
+|-----------|-------|----------------------|
+| σ (noise) | 1.0 | Balanced privacy-utility |
+| δ (failure prob) | 1e-5 | Negligible breach probability |
+| **Target ε** | **< 10** | HIPAA Safe Harbor compliant |
 
 ---
 
 ## Aggregation Methods
 
-| Method | Paper | Key Idea |
-|--------|-------|---------|
-| **FedAvg** | McMahan et al. (2017) | Weighted average of client updates |
-| **FedProx** | Li et al. (2020) | FedAvg + proximal term to reduce drift |
-| **FedMedian** | Yin et al. (2018) | Coordinate-wise median — robust to outliers |
-| **SCAFFOLD** | Karimireddy et al. (2020) | Control variates to fix client drift |
-
----
-
-## Output Files
-
-After training, results are saved in `results/`:
-
-```
-results/
-├── method_comparison.csv        ← Main paper comparison table
-├── client_test_metrics.csv      ← Per-client classification metrics
-├── round_metrics.csv            ← Per-round training log
-├── privacy_metrics.csv          ← Privacy budget tracking
-├── fairness_metrics.csv         ← Fairness analysis
-├── rl_metrics.csv               ← RL agent performance
-├── fl_metrics.csv               ← FL convergence metrics
-├── computational_metrics.csv    ← Time and memory usage
-├── method_comparison.png        ← Bar chart comparing all methods
-├── fairness_analysis.png        ← Fairness gap visualization
-└── {method}/
-    ├── training_curves.png      ← 6-panel training progress
-    ├── classification_metrics_{method}.png
-    ├── confusion_matrices_{method}.png
-    ├── training_history.json
-    ├── best_model.pt
-    └── rl_agent.pt
-```
+| Method | Reference | Medical FL Benefit |
+|--------|-----------|-------------------|
+| **FedAvg** | McMahan et al. (2017) | Standard baseline |
+| **FedProx** | Li et al. (2020) | Handles heterogeneous hospital data |
+| **FedMedian** | Yin et al. (2018) | Robust to outlier hospitals |
+| **SCAFFOLD** | Karimireddy et al. (2020) | Corrects hospital-specific drift |
 
 ---
 
@@ -386,21 +369,21 @@ matplotlib>=3.7.0
 numpy>=1.24.0
 pandas>=2.0.0
 psutil>=5.9.0
+scipy>=1.10.0
 ```
 
 ---
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this code for medical AI research, please cite:
 
 ```bibtex
 @article{dppfl2025,
-  title   = {Dynamic Privacy-Preserving Federated Learning with Multimodal
-             Swin Transformers and Reinforcement Learning for
-             Collaborative Medical Diagnostics},
+  title   = {Privacy-Preserving Federated Learning with Reinforcement Learning
+             for Medical Expert Systems: A Multi-Domain Diagnostic Framework},
   author  = {Your Name},
-  journal = {Journal Name},
+  journal = {Expert Systems with Applications},
   year    = {2025}
 }
 ```
@@ -414,8 +397,8 @@ If you use this code in your research, please cite:
 3. Yin et al. — *Byzantine-Robust Distributed Learning* (FedMedian, 2018)
 4. Karimireddy et al. — *SCAFFOLD: Stochastic Controlled Averaging* (2020)
 5. Liu et al. — *Swin Transformer: Hierarchical Vision Transformer* (2021)
-6. Bonawitz et al. — *Practical Secure Aggregation for Privacy-Preserving ML* (SMPC, 2017)
-7. Abadi et al. — *Deep Learning with Differential Privacy* (2016)
+6. Abadi et al. — *Deep Learning with Differential Privacy* (2016)
+7. Rieke et al. — *The Future of Digital Health with Federated Learning* (2020)
 
 ---
 
@@ -426,5 +409,9 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 <div align="center">
-Made for medical AI research — privacy-preserving collaborative learning
+
+**Built for Medical Expert Systems Research**
+
+Privacy-Preserving | Federated | Clinically Relevant
+
 </div>

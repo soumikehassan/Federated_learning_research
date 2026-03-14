@@ -5,6 +5,7 @@ Expects: root_dir/class_name/image_files
 """
 
 import os
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
@@ -146,4 +147,75 @@ def get_client_dataloaders(
         "num_classes":  len(full_ds.classes),
         "classes":      full_ds.classes,
         "dataset_size": n_train,
+    }
+
+
+def get_client_dataloaders_with_partition(
+    client_id,
+    data_path,
+    alpha=0.5,
+    client_idx=0,
+    num_domain_clients=2,
+    image_size=224,
+    batch_size=16,
+    train_ratio=0.8,
+    val_ratio=0.1,
+    num_workers=0,
+    seed=42,
+    max_per_class=None,
+):
+    """Return dict with train/val/test DataLoaders using Dirichlet partitioning."""
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from utils.data_partitioner import DirichletPartitioner
+
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"Dataset not found: {data_path}")
+
+    full_ds = MedicalImageDataset(data_path, transform=None, max_per_class=max_per_class)
+    total = len(full_ds)
+
+    # First split into train/val/test
+    n_train = int(total * train_ratio)
+    n_val = int(total * val_ratio)
+    n_test = total - n_train - n_val
+
+    gen = torch.Generator().manual_seed(seed)
+    train_sub, val_sub, test_sub = random_split(full_ds, [n_train, n_val, n_test], generator=gen)
+
+    # Get the actual train indices
+    train_indices = train_sub.indices
+    train_labels = [full_ds.samples[i][1] for i in train_indices]
+
+    # Apply Dirichlet partitioning on train data
+    partitioner = DirichletPartitioner(full_ds, num_clients=num_domain_clients, alpha=alpha, seed=seed)
+    # Override targets with just the training subset labels
+    partitioner.targets = np.array(train_labels)
+    partitioner.num_classes = len(np.unique(train_labels))
+
+    # Get partitioned indices (these are indices into the training subset)
+    client_train_indices = partitioner.partition()[client_idx]
+
+    # Convert back to indices into the full dataset
+    actual_train_indices = [train_indices[i] for i in client_train_indices]
+
+    # Create subset with just this client's training data
+    client_train_subset = torch.utils.data.Subset(full_ds, actual_train_indices)
+
+    train_ds = _SubsetWithTransform(client_train_subset, get_transforms("train", image_size))
+    val_ds = _SubsetWithTransform(val_sub, get_transforms("val", image_size))
+    test_ds = _SubsetWithTransform(test_sub, get_transforms("test", image_size))
+
+    def loader(ds, shuffle):
+        return DataLoader(ds, batch_size=batch_size, shuffle=shuffle,
+                          num_workers=num_workers, pin_memory=False)
+
+    return {
+        "train":        loader(train_ds, shuffle=True),
+        "val":          loader(val_ds,   shuffle=False),
+        "test":         loader(test_ds,  shuffle=False),
+        "num_classes":  len(full_ds.classes),
+        "classes":      full_ds.classes,
+        "dataset_size": len(actual_train_indices),
+        "alpha":        alpha,
     }

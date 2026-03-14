@@ -35,7 +35,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, THIS_DIR)
 
 import config
-from data.dataset                 import get_client_dataloaders
+from data.dataset                 import get_client_dataloaders, get_client_dataloaders_with_partition
 from models.swin_transformer      import build_swin_model
 from clients.federated_client     import FederatedClient
 from server.federated_server      import FederatedServer
@@ -108,7 +108,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
     Train one full federated round loop for one aggregation method.
     Returns final metrics dict.
     """
-    sigma = noise_mult if noise_mult is not None else config.DP_NOISE_MULT
+    sigma = noise_mult if noise_mult is not None else (args.sigma if hasattr(args, 'sigma') and args.sigma is not None else config.DP_NOISE_MULT)
     print(f"\n{'='*65}")
     print(f"  Method: {method}  |  sigma={sigma}  |  DP={'off' if args.no_dp else 'on'}")
     print(f"{'='*65}")
@@ -131,12 +131,14 @@ def run_one_method(args, method: str, loaders, models_init, device,
         )
 
     # ── RL selector ───────────────────────────────────────────────────────────
+    # If selection mode is not 'rl', RL will effectively act as a pass-through
+    # for random or all selection, but we maintain the class for metrics.
     rl = RLClientSelector(
         num_clients=config.NUM_CLIENTS,
         hidden_dim=config.RL_HIDDEN_DIM, lr=config.RL_LR,
         gamma=config.RL_GAMMA,
-        epsilon_start=config.RL_EPSILON_START,
-        epsilon_end=config.RL_EPSILON_END,
+        epsilon_start=config.RL_EPSILON_START if args.selection == 'rl' else 1.0,
+        epsilon_end=config.RL_EPSILON_END if args.selection == 'rl' else 1.0,
         epsilon_decay=config.RL_EPSILON_DECAY,
         buffer_size=config.RL_BUFFER_SIZE,
         batch_size=config.RL_BATCH_SIZE,
@@ -157,7 +159,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
     }
 
     # ── Server ────────────────────────────────────────────────────────────────
-    method_results_dir = os.path.join(config.RESULTS_DIR, method)
+    method_results_dir = os.path.join(args.output_dir, method)
     os.makedirs(method_results_dir, exist_ok=True)
 
     server = FederatedServer(
@@ -181,10 +183,18 @@ def run_one_method(args, method: str, loaders, models_init, device,
 
         stats    = {cid: c.get_rl_state_features() for cid, c in clients.items()}
         state    = rl.build_state(stats)
-        sel_idx  = rl.select_clients(stats, rnd)
+        
+        # Determine selection indices
+        if args.selection == 'all':
+            sel_idx = list(range(config.NUM_CLIENTS))
+        elif args.selection == 'random':
+            sel_idx = random.sample(range(config.NUM_CLIENTS), config.RL_MIN_CLIENTS)
+        else: # 'rl'
+            sel_idx = rl.select_clients(stats, rnd)
+            
         sel_cids = [f"client_{i}" for i in sel_idx]
         selection_history.append(sel_idx)
-        print(f"    Selected: {sel_cids}  (eps={rl.epsilon:.3f})")
+        print(f"    Selected: {sel_cids} (Mode={args.selection}, eps={rl.epsilon:.3f})")
 
         updates = []
         for cid in sel_cids:
@@ -200,7 +210,14 @@ def run_one_method(args, method: str, loaders, models_init, device,
             [u["val_accuracy"] for u in updates],
             weights=[u["data_size"] for u in updates]
         ))
-        reward  = rl.compute_reward(prev_acc, global_acc, sel_idx, rnd)
+        # Get per-client accuracies for fairness reward (use integer indices)
+        client_accs = {idx: u["val_accuracy"] for idx, u in zip(sel_idx, updates)}
+        # Map client IDs to domain IDs for RL
+        cid_to_idx = {cid: i for i, cid in enumerate(config.DATASET_PATHS.keys())}
+        client_domains = {cid_to_idx[cid]: dom for cid, dom in config.CLIENT_DOMAINS.items()}
+        reward  = rl.compute_reward(prev_acc, global_acc, sel_idx, rnd,
+                                    client_accs=client_accs,
+                                    client_domains=client_domains)
         nxt_st  = rl.build_state({cid: c.get_rl_state_features() for cid, c in clients.items()})
         if prev_st is not None:
             rl.store_transition(prev_st, prev_sel, reward, state, False)
@@ -336,19 +353,23 @@ def main(args):
     setup_logging(os.path.join(config.RESULTS_DIR, "training.log"))
 
     # ── Datasets ──────────────────────────────────────────────────────────────
-    print("\n[1/4] Loading datasets...")
+    print("\n[1/4] Loading datasets with Dirichlet partitioning...")
     loaders = {}
     for cid, path in config.DATASET_PATHS.items():
+        alpha = config.DOMAIN_DIRICHLET_ALPHA.get(cid, 0.5)
         try:
-            loaders[cid] = get_client_dataloaders(
+            loaders[cid] = get_client_dataloaders_with_partition(
                 cid, path,
+                alpha=alpha,
+                client_idx=int(cid.split("_")[-1]),  # 0 or 1 within domain
+                num_domain_clients=2,
                 image_size=config.IMAGE_SIZE, batch_size=args.batch_size,
                 train_ratio=config.TRAIN_RATIO, val_ratio=config.VAL_RATIO,
                 num_workers=config.NUM_WORKERS, seed=config.SEED,
                 max_per_class=args.max_samples,
             )
             print(f"  {cid}: {loaders[cid]['dataset_size']} train | "
-                  f"{loaders[cid]['num_classes']} classes")
+                  f"{loaders[cid]['num_classes']} classes | α={alpha}")
         except FileNotFoundError:
             nc = config.NUM_CLASSES_PER_CLIENT.get(cid, 2)
             print(f"  {cid}: path not found — using synthetic ({nc} classes)")
@@ -366,7 +387,7 @@ def main(args):
         print(f"  {cid}: {nc} classes | {p:.1f}M params")
 
     # ── CSV Logger ────────────────────────────────────────────────────────────
-    csv_logger = CSVResultsLogger(config.RESULTS_DIR)
+    csv_logger = CSVResultsLogger(args.output_dir)
 
     # ── Determine which methods to run ────────────────────────────────────────
     if args.method == "all":
@@ -463,4 +484,16 @@ if __name__ == "__main__":
     p.add_argument("--max-samples",  type=int,   default=None)
     p.add_argument("--noise-sweep",  action="store_true",
                    help="Run noise sensitivity: sigma=0.5, 1.0, 2.0")
-    main(p.parse_args())
+    p.add_argument("--seed",         type=int,   default=config.SEED, help="Random seed")
+    p.add_argument("--sigma",        type=float, default=None, help="Override DP noise multiplier")
+    p.add_argument("--selection",    type=str,   default="rl", choices=["rl", "random", "all"],
+                   help="Client selection strategy")
+    p.add_argument("--output-dir",   type=str,   default=config.RESULTS_DIR, help="Results directory")
+    
+    args = p.parse_args()
+    set_seed(args.seed)
+    
+    # Ensure output directory exists
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    main(args)

@@ -127,18 +127,86 @@ class RLClientSelector:
         return selected
 
     # ── Reward ─────────────────────────────────────────────────────────────────
-    def compute_reward(self, prev_acc, curr_acc, selected, current_round) -> float:
-        reward = (curr_acc - prev_acc) * 10.0
+    def compute_reward(self, prev_acc, curr_acc, selected, current_round,
+                       client_accs=None, client_domains=None) -> float:
+        """
+        Multi-objective reward:
+        1. Accuracy Improvement (Fundamental goal)
+        2. Selection Diversity (Anti-drift / Fairness)
+        3. Staleness Penalty (Ensures all clients eventually contribute)
+        4. Task Fairness (Ensures no domain is left behind - Experiment 2)
+        """
+        # 1. Improvement gain
+        acc_reward = (curr_acc - prev_acc) * 10.0
+
+        # 2. Diversity bonus
+        # We reward selecting clients that haven't been picked in a while
+        diversity_reward = 0.0
         for c in selected:
             gap = current_round - self._last_selected[c] - 1
             if gap > 2:
-                reward += 0.1 * min(gap, 5)
-        unselected = [i for i in range(self.num_clients) if i not in selected]
-        for c in unselected:
-            gap = current_round - self._last_selected[c] - 1
-            if gap > 5:
-                reward -= 0.05 * gap
-        return float(reward)
+                diversity_reward += 0.1 * min(gap, 10)  # Capped bonus for long waits
+        
+        # 3. Staleness penalty for those NOT selected
+        staleness_penalty = 0.0
+        for c in range(self.num_clients):
+            if c not in selected:
+                gap = current_round - self._last_selected[c] - 1
+                if gap > 5:
+                    staleness_penalty += 0.05 * gap
+
+        # 4. Task Fairness (if info available)
+        fairness_reward = 0.0
+        if client_accs is not None and client_domains is not None:
+             fairness_reward = self._compute_task_fairness_reward(
+                 client_accs, client_domains, selected
+             )
+
+        total_reward = acc_reward + diversity_reward - staleness_penalty + fairness_reward
+        
+        logger.debug(f"Reward Breakdown: Acc={acc_reward:.3f}, Div={diversity_reward:.3f}, "
+                     f"Stale=-{staleness_penalty:.3f}, Fair={fairness_reward:.3f}")
+        return float(total_reward)
+
+    def _compute_task_fairness_reward(self, client_accs, client_domains, selected):
+        """
+        Compute fairness reward based on performance variance across domains.
+
+        Goal: Ensure no single domain (task) is left behind.
+        Higher reward when selected clients help balance domain performance.
+        """
+        # Group accuracies by domain
+        domain_accs = {}
+        for client_idx, domain_id in client_domains.items():
+            if domain_id not in domain_accs:
+                domain_accs[domain_id] = []
+            if client_idx in client_accs:
+                domain_accs[domain_id].append(client_accs[client_idx])
+
+        if len(domain_accs) < 2:
+            return 0.0
+
+        # Compute mean accuracy per domain
+        domain_means = {d: np.mean(accs) for d, accs in domain_accs.items() if accs}
+
+        if len(domain_means) < 2:
+            return 0.0
+
+        # Fairness: reward low variance across domains
+        mean_accs = list(domain_means.values())
+        domain_variance = np.var(mean_accs)
+
+        # Reward when variance is low (max reward when variance = 0)
+        # Penalty when variance is high (one domain struggling)
+        fairness_reward = 0.5 * (1.0 - min(domain_variance * 10, 1.0))
+
+        # Bonus for selecting clients from underperforming domains
+        min_domain = min(domain_means, key=domain_means.get)
+        selected_domains = [client_domains.get(c, -1) for c in selected]
+        if min_domain in selected_domains:
+            fairness_reward += 0.2  # Bonus for helping the weakest domain
+
+        return fairness_reward
 
     # ── Learning ───────────────────────────────────────────────────────────────
     def store_transition(self, state, action, reward, next_state, done):

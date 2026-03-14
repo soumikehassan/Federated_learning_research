@@ -14,23 +14,47 @@ BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 # ── Dataset paths ──────────────────────────────────────────────────────────────
+# 6 clients: 2 per domain, each with different Dirichlet alpha (non-IID level)
 DATASET_PATHS = {
-    "client_0": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
-    "client_1": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
-    "client_2": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
+    # Alzheimer MRI clients (4 classes) - moderate non-IID
+    "client_0_0": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
+    "client_0_1": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
+    # Retinal Disease clients (7 classes) - high non-IID
+    "client_1_0": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
+    "client_1_1": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
+    # TB Chest X-Ray clients (2 classes) - mild non-IID
+    "client_2_0": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
+    "client_2_1": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
 }
 
 DATASET_NAMES = {
-    "client_0": "Alzheimer MRI",
-    "client_1": "Retinal Disease",
-    "client_2": "TB Chest X-Ray",
+    "client_0_0": "Alzheimer MRI",
+    "client_0_1": "Alzheimer MRI",
+    "client_1_0": "Retinal Disease",
+    "client_1_1": "Retinal Disease",
+    "client_2_0": "TB Chest X-Ray",
+    "client_2_1": "TB Chest X-Ray",
 }
 
 NUM_CLASSES_PER_CLIENT = {
-    "client_0": 4,   # MildDemented, ModerateDemented, NonDemented, VeryMildDemented
-    "client_1": 7,   # Diabetic Retinopathy, Disc Edema, Healthy, Macular_Degeneration,
-                     # Myopia, Retinal Detachment, Retinitis Pigmentosa
-    "client_2": 2,   # Normal, Tuberculosis
+    "client_0_0": 4, "client_0_1": 4,
+    "client_1_0": 7, "client_1_1": 7,
+    "client_2_0": 2, "client_2_1": 2,
+}
+
+# Domain grouping (for RL task fairness)
+CLIENT_DOMAINS = {
+    "client_0_0": 0, "client_0_1": 0,  # Domain 0: Alzheimer
+    "client_1_0": 1, "client_1_1": 1,  # Domain 1: Retinal
+    "client_2_0": 2, "client_2_1": 2,  # Domain 2: TB
+}
+NUM_DOMAINS = 3
+
+# Dirichlet alpha per domain (lower = more non-IID)
+DOMAIN_DIRICHLET_ALPHA = {
+    "client_0_0": 0.5, "client_0_1": 0.5,  # Moderate non-IID
+    "client_1_0": 0.1, "client_1_1": 0.1,  # High non-IID
+    "client_2_0": 1.0, "client_2_1": 1.0,  # Mild non-IID
 }
 
 # ── Model ──────────────────────────────────────────────────────────────────────
@@ -39,7 +63,7 @@ MODEL_SIZE   = "tiny"   # tiny | small
 USE_PRETRAIN = True
 
 # ── Federated Learning ─────────────────────────────────────────────────────────
-NUM_CLIENTS   = 3
+NUM_CLIENTS   = 5
 NUM_ROUNDS    = 20
 LOCAL_EPOCHS  = 3
 BATCH_SIZE    = 16
