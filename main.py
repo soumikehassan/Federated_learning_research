@@ -109,7 +109,16 @@ def run_one_method(args, method: str, loaders, models_init, device,
     Train one full federated round loop for one aggregation method.
     Returns final metrics dict.
     """
-    # Allow minimal args from experiment scripts (missing use_smpc, no_dp, selection, etc.)
+    # Ensure args has attributes required by main CLI (experiment scripts pass minimal args)
+    for attr, default in [
+        ("use_smpc", False), ("no_dp", False), ("selection", "rl"),
+        ("lr", config.LEARNING_RATE), ("local_epochs", config.LOCAL_EPOCHS),
+        ("output_dir", config.RESULTS_DIR), ("rounds", config.NUM_ROUNDS),
+        ("batch_size", config.BATCH_SIZE), ("sigma", None),
+    ]:
+        if not hasattr(args, attr):
+            setattr(args, attr, default)
+
     _no_dp = getattr(args, "no_dp", False)
     _use_smpc = getattr(args, "use_smpc", False)
     _selection = getattr(args, "selection", "rl")
