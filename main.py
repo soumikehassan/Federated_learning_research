@@ -109,21 +109,31 @@ def run_one_method(args, method: str, loaders, models_init, device,
     Train one full federated round loop for one aggregation method.
     Returns final metrics dict.
     """
-    sigma = noise_mult if noise_mult is not None else (args.sigma if hasattr(args, 'sigma') and args.sigma is not None else config.DP_NOISE_MULT)
+    # Allow minimal args from experiment scripts (missing use_smpc, no_dp, selection, etc.)
+    _no_dp = getattr(args, "no_dp", False)
+    _use_smpc = getattr(args, "use_smpc", False)
+    _selection = getattr(args, "selection", "rl")
+    _lr = getattr(args, "lr", config.LEARNING_RATE)
+    _local_epochs = getattr(args, "local_epochs", config.LOCAL_EPOCHS)
+    _output_dir = getattr(args, "output_dir", config.RESULTS_DIR)
+    _rounds = getattr(args, "rounds", config.NUM_ROUNDS)
+    _batch_size = getattr(args, "batch_size", config.BATCH_SIZE)
+
+    sigma = noise_mult if noise_mult is not None else (getattr(args, "sigma", None) or config.DP_NOISE_MULT)
     print(f"\n{'='*65}")
-    print(f"  Method: {method}  |  sigma={sigma}  |  DP={'off' if args.no_dp else 'on'}")
+    print(f"  Method: {method}  |  sigma={sigma}  |  DP={'off' if _no_dp else 'on'}")
     print(f"{'='*65}")
 
     # ── DP setup ──────────────────────────────────────────────────────────────
     dp_map = {
         cid: DPMechanism(sigma, config.DP_MAX_GRAD_NORM,
-                         config.DP_DELTA, enabled=not args.no_dp)
+                         config.DP_DELTA, enabled=not _no_dp)
         for cid in config.DATASET_PATHS
     }
 
     # ── SMPC setup ────────────────────────────────────────────────────────────
     smpc = None
-    if args.use_smpc:
+    if _use_smpc:
         smpc = SecureAggregator(
             num_clients=config.NUM_CLIENTS,
             num_shares=config.SMPC_NUM_SHARES,
@@ -138,8 +148,8 @@ def run_one_method(args, method: str, loaders, models_init, device,
         num_clients=config.NUM_CLIENTS,
         hidden_dim=config.RL_HIDDEN_DIM, lr=config.RL_LR,
         gamma=config.RL_GAMMA,
-        epsilon_start=config.RL_EPSILON_START if args.selection == 'rl' else 1.0,
-        epsilon_end=config.RL_EPSILON_END if args.selection == 'rl' else 1.0,
+        epsilon_start=config.RL_EPSILON_START if _selection == 'rl' else 1.0,
+        epsilon_end=config.RL_EPSILON_END if _selection == 'rl' else 1.0,
         epsilon_decay=config.RL_EPSILON_DECAY,
         buffer_size=config.RL_BUFFER_SIZE,
         batch_size=config.RL_BATCH_SIZE,
@@ -152,15 +162,15 @@ def run_one_method(args, method: str, loaders, models_init, device,
         cid: FederatedClient(
             cid, copy.deepcopy(models_init[cid]), loaders[cid],
             dp_map[cid], device,
-            lr=args.lr, weight_decay=config.WEIGHT_DECAY,
-            local_epochs=args.local_epochs,
+            lr=_lr, weight_decay=config.WEIGHT_DECAY,
+            local_epochs=_local_epochs,
             fedprox_mu=(config.FEDPROX_MU if method == "FedProx" else 0.0),
         )
         for cid in config.DATASET_PATHS
     }
 
     # ── Server ────────────────────────────────────────────────────────────────
-    method_results_dir = os.path.join(args.output_dir, method)
+    method_results_dir = os.path.join(_output_dir, method)
     os.makedirs(method_results_dir, exist_ok=True)
     first_cid = next(iter(config.DATASET_PATHS))
 
@@ -170,7 +180,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
         results_dir=method_results_dir,
         aggregation_method=method,
         fedprox_mu=config.FEDPROX_MU,
-        use_smpc=args.use_smpc,
+        use_smpc=_use_smpc,
         smpc_aggregator=smpc,
     )
 
@@ -180,9 +190,9 @@ def run_one_method(args, method: str, loaders, models_init, device,
     epsilon_history, acc_history = [], []
     time_per_round, selection_history, reward_history = [], [], []
 
-    for rnd in range(1, args.rounds + 1):
+    for rnd in range(1, _rounds + 1):
         t0 = time.time()
-        print(f"  [{method}] Round {rnd}/{args.rounds}")
+        print(f"  [{method}] Round {rnd}/{_rounds}")
 
         stats = {cid: c.get_rl_state_features() for cid, c in clients.items()}
         # RL expects keys "client_0".."client_{N-1}"; map actual ids to index
@@ -190,16 +200,16 @@ def run_one_method(args, method: str, loaders, models_init, device,
         state = rl.build_state(stats_for_rl)
 
         # Determine selection indices (0..NUM_CLIENTS-1), then map to actual client ids
-        if args.selection == 'all':
+        if _selection == 'all':
             sel_idx = list(range(config.NUM_CLIENTS))
-        elif args.selection == 'random':
+        elif _selection == 'random':
             sel_idx = random.sample(range(config.NUM_CLIENTS), config.RL_MIN_CLIENTS)
         else:
             sel_idx = rl.select_clients(stats_for_rl, rnd)
 
         sel_cids = [client_ids[i] for i in sel_idx]
         selection_history.append(sel_idx)
-        print(f"    Selected: {sel_cids} (Mode={args.selection}, eps={rl.epsilon:.3f})")
+        print(f"    Selected: {sel_cids} (Mode={_selection}, eps={rl.epsilon:.3f})")
 
         updates = []
         for cid in sel_cids:
@@ -229,8 +239,8 @@ def run_one_method(args, method: str, loaders, models_init, device,
         rl_loss = rl.update()
         prev_acc, prev_st, prev_sel = global_acc, state, sel_idx
 
-        sr  = args.batch_size / max(sum(clients[c].dataset_size for c in sel_cids), 1)
-        pr  = dp_map[first_cid].get_privacy_report(rnd * args.local_epochs, sr)
+        sr  = _batch_size / max(sum(clients[c].dataset_size for c in sel_cids), 1)
+        pr  = dp_map[first_cid].get_privacy_report(rnd * _local_epochs, sr)
         eps = pr["epsilon"]
 
         t_elapsed = time.time() - t0
@@ -316,7 +326,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
         global_acc   = acc_history[-1],
         privacy_eps  = epsilon_history[-1],
         fairness_gap = fair["fairness_gap"],
-        conv_round   = fl_mets["convergence_round_80pct"] or args.rounds,
+        conv_round   = fl_mets["convergence_round_80pct"] or _rounds,
     )
 
     # ── RL save (optional; disable to keep results zip small) ─────────────────
@@ -331,8 +341,8 @@ def run_one_method(args, method: str, loaders, models_init, device,
             pass
 
     final_pr = dp_map[first_cid].get_privacy_report(
-        args.rounds * args.local_epochs,
-        args.batch_size / max(clients[first_cid].dataset_size, 1)
+        _rounds * _local_epochs,
+        _batch_size / max(clients[first_cid].dataset_size, 1)
     )
     print_final_report(server.round_history, full_metrics,
                        rl.get_selection_stats(), final_pr, method,
