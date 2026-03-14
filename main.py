@@ -174,6 +174,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
     )
 
     # ── Training loop ─────────────────────────────────────────────────────────
+    client_ids = list(config.DATASET_PATHS.keys())  # ordered: client_0_0, client_0_1, ...
     prev_acc, prev_st, prev_sel = 0.0, None, None
     epsilon_history, acc_history = [], []
     time_per_round, selection_history, reward_history = [], [], []
@@ -182,18 +183,20 @@ def run_one_method(args, method: str, loaders, models_init, device,
         t0 = time.time()
         print(f"  [{method}] Round {rnd}/{args.rounds}")
 
-        stats    = {cid: c.get_rl_state_features() for cid, c in clients.items()}
-        state    = rl.build_state(stats)
-        
-        # Determine selection indices
+        stats = {cid: c.get_rl_state_features() for cid, c in clients.items()}
+        # RL expects keys "client_0".."client_{N-1}"; map actual ids to index
+        stats_for_rl = {f"client_{i}": stats[cid] for i, cid in enumerate(client_ids)}
+        state = rl.build_state(stats_for_rl)
+
+        # Determine selection indices (0..NUM_CLIENTS-1), then map to actual client ids
         if args.selection == 'all':
             sel_idx = list(range(config.NUM_CLIENTS))
         elif args.selection == 'random':
             sel_idx = random.sample(range(config.NUM_CLIENTS), config.RL_MIN_CLIENTS)
-        else: # 'rl'
-            sel_idx = rl.select_clients(stats, rnd)
-            
-        sel_cids = [f"client_{i}" for i in sel_idx]
+        else:
+            sel_idx = rl.select_clients(stats_for_rl, rnd)
+
+        sel_cids = [client_ids[i] for i in sel_idx]
         selection_history.append(sel_idx)
         print(f"    Selected: {sel_cids} (Mode={args.selection}, eps={rl.epsilon:.3f})")
 
@@ -219,7 +222,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
         reward  = rl.compute_reward(prev_acc, global_acc, sel_idx, rnd,
                                     client_accs=client_accs,
                                     client_domains=client_domains)
-        nxt_st  = rl.build_state({cid: c.get_rl_state_features() for cid, c in clients.items()})
+        nxt_st  = rl.build_state({f"client_{i}": clients[cid].get_rl_state_features() for i, cid in enumerate(client_ids)})
         if prev_st is not None:
             rl.store_transition(prev_st, prev_sel, reward, state, False)
         rl_loss = rl.update()

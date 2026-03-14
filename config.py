@@ -78,7 +78,7 @@ MODEL_SIZE   = "tiny"   # tiny | small
 USE_PRETRAIN = True
 
 # ── Federated Learning ─────────────────────────────────────────────────────────
-NUM_CLIENTS   = 5
+NUM_CLIENTS   = 6  # must match len(DATASET_PATHS): client_0_0, 0_1, 1_0, 1_1, 2_0, 2_1
 NUM_ROUNDS    = 20
 LOCAL_EPOCHS  = 3
 BATCH_SIZE    = 16
