@@ -287,7 +287,7 @@ def plot_fairness(client_accuracies: dict, methods_fairness: dict, save_dir: str
 # Final text report
 # ─────────────────────────────────────────────────────────────────────────────
 def print_final_report(history, client_test_results, selection_stats,
-                       privacy_report, method="FedAvg"):
+                       privacy_report, method="FedAvg", client_ids=None):
     print("\n" + "="*65)
     print(f"  FINAL REPORT  [{method}]  FL + RL + DP + Swin Transformer")
     print("="*65)
@@ -303,8 +303,14 @@ def print_final_report(history, client_test_results, selection_stats,
 
     if selection_stats:
         print("\n  RL Client Selection:")
-        for cid, s in selection_stats.items():
-            print(f"    {cid}: {s['times_selected']}x ({s['selection_rate']*100:.1f}%)")
+        n = len(selection_stats)
+        for i in range(n):
+            key = f"client_{i}"
+            if key not in selection_stats:
+                continue
+            s = selection_stats[key]
+            label = client_ids[i] if client_ids and i < len(client_ids) else key
+            print(f"    {label}: {s['times_selected']}x ({s['selection_rate']*100:.1f}%)")
 
     eps = privacy_report.get("epsilon", "N/A")
     dlt = privacy_report.get("delta", "N/A")

@@ -326,7 +326,8 @@ def run_one_method(args, method: str, loaders, models_init, device,
         args.batch_size / max(clients[first_cid].dataset_size, 1)
     )
     print_final_report(server.round_history, full_metrics,
-                       rl.get_selection_stats(), final_pr, method)
+                       rl.get_selection_stats(), final_pr, method,
+                       client_ids=client_ids)
 
     return {
         "method":          method,
