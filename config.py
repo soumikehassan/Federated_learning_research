@@ -124,6 +124,13 @@ RL_BUFFER_SIZE   = 1000
 RL_BATCH_SIZE    = 32
 RL_MIN_CLIENTS   = 2
 
+# ── Checkpoints (set False to keep results zip small: only JSON, CSV, PNG) ─────
+SAVE_MODEL_CHECKPOINTS = False   # do not save best_model.pt
+SAVE_RL_AGENT         = False   # do not save rl_agent.pt
+
+# ── Figure quality (publication) ───────────────────────────────────────────────
+FIGURE_DPI = 300   # publication-quality PNG (300 DPI)
+
 # ── CSV output ─────────────────────────────────────────────────────────────────
 SAVE_CSV         = True     # save all metrics to CSV files
 CSV_ROUND_LOG    = "round_metrics.csv"

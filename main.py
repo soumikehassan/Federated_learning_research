@@ -318,8 +318,9 @@ def run_one_method(args, method: str, loaders, models_init, device,
         conv_round   = fl_mets["convergence_round_80pct"] or args.rounds,
     )
 
-    # ── RL save ───────────────────────────────────────────────────────────────
-    rl.save(os.path.join(method_results_dir, "rl_agent.pt"))
+    # ── RL save (optional; disable to keep results zip small) ─────────────────
+    if getattr(config, "SAVE_RL_AGENT", False):
+        rl.save(os.path.join(method_results_dir, "rl_agent.pt"))
 
     final_pr = dp_map[first_cid].get_privacy_report(
         args.rounds * args.local_epochs,
@@ -462,7 +463,8 @@ def main(args):
     csv_logger.print_summary()
     print(f"\n  All results saved to: {config.RESULTS_DIR}/")
     print("  Each method has its own subfolder with training_history.json,")
-    print("  training_curves.png, confusion_matrices.png, best_model.pt")
+    print("  training_curves.png, confusion_matrices.png"
+          + (", best_model.pt" if getattr(config, "SAVE_MODEL_CHECKPOINTS", False) else ""))
     print("\n  Top-level CSV files for your paper tables:")
     print("    round_metrics.csv, client_test_metrics.csv,")
     print("    privacy_metrics.csv, fairness_metrics.csv,")

@@ -1,7 +1,7 @@
 """
 utils/metrics.py  ─ v2
 Plotting utilities for all metric categories from research doc.
-Generates publication-quality figures saved as PNG.
+Generates publication-quality figures (300 DPI PNG by default).
 """
 
 import os
@@ -10,6 +10,12 @@ import logging
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+try:
+    import config
+    FIGURE_DPI = getattr(config, "FIGURE_DPI", 300)
+except Exception:
+    FIGURE_DPI = 300
 
 try:
     import matplotlib
@@ -22,12 +28,36 @@ except ImportError:
     logger.warning("matplotlib not installed — pip install matplotlib")
 
 
+def _publication_style():
+    """Apply publication-quality defaults (fonts, linewidths) for figures."""
+    if not HAS_MPL:
+        return
+    plt.rcParams.update({
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 100,
+        "savefig.dpi": FIGURE_DPI,
+        "savefig.bbox": "tight",
+        "lines.linewidth": 2,
+        "lines.markersize": 5,
+        "axes.linewidth": 1.2,
+        "grid.linewidth": 0.8,
+        "axes.grid": True,
+        "axes.axisbelow": True,
+    })
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Training curves (original 6-panel + method comparison)
 # ─────────────────────────────────────────────────────────────────────────────
 def plot_training_curves(history_path: str, save_dir: str):
     if not HAS_MPL:
         return
+    _publication_style()
     with open(history_path) as f:
         history = json.load(f)
 
@@ -73,7 +103,7 @@ def plot_training_curves(history_path: str, save_dir: str):
 
     plt.tight_layout()
     out = os.path.join(save_dir, "training_curves.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 
@@ -84,6 +114,7 @@ def plot_training_curves(history_path: str, save_dir: str):
 def plot_classification_metrics(client_metrics: dict, save_dir: str, method="FedAvg"):
     if not HAS_MPL:
         return
+    _publication_style()
     metric_names = ["accuracy","precision","recall","f1_score","specificity","cohen_kappa"]
     clients      = list(client_metrics.keys())
     x            = np.arange(len(metric_names))
@@ -107,7 +138,7 @@ def plot_classification_metrics(client_metrics: dict, save_dir: str, method="Fed
     ax.legend(); ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
     out = os.path.join(save_dir, f"classification_metrics_{method}.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 
@@ -118,6 +149,7 @@ def plot_classification_metrics(client_metrics: dict, save_dir: str, method="Fed
 def plot_confusion_matrices(client_metrics: dict, save_dir: str, method="FedAvg"):
     if not HAS_MPL:
         return
+    _publication_style()
     clients = list(client_metrics.keys())
     fig, axes = plt.subplots(1, len(clients), figsize=(6*len(clients), 5))
     if len(clients) == 1:
@@ -152,7 +184,7 @@ def plot_confusion_matrices(client_metrics: dict, save_dir: str, method="FedAvg"
     plt.suptitle(f"Confusion Matrices  [{method}]", fontsize=13, fontweight="bold")
     plt.tight_layout()
     out = os.path.join(save_dir, f"confusion_matrices_{method}.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 
@@ -168,6 +200,7 @@ def plot_privacy_accuracy_tradeoff(noise_results: dict, save_dir: str):
     """
     if not HAS_MPL or not noise_results:
         return
+    _publication_style()
     sigmas   = sorted(noise_results.keys())
     epsilons = [noise_results[s]["final_epsilon"] for s in sigmas]
     accs     = [noise_results[s]["final_accuracy"] for s in sigmas]
@@ -195,7 +228,7 @@ def plot_privacy_accuracy_tradeoff(noise_results: dict, save_dir: str):
     plt.suptitle("Differential Privacy Noise Sensitivity Analysis", fontsize=13, fontweight="bold")
     plt.tight_layout()
     out = os.path.join(save_dir, "privacy_accuracy_tradeoff.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 
@@ -214,6 +247,7 @@ def plot_method_comparison(comparison_data: dict, save_dir: str):
     """
     if not HAS_MPL or not comparison_data:
         return
+    _publication_style()
     methods  = list(comparison_data.keys())
     metrics  = ["global_acc", "client_0", "client_1", "client_2"]
     labels   = ["Global Acc", "Alzheimer", "Retinal", "TB"]
@@ -238,7 +272,7 @@ def plot_method_comparison(comparison_data: dict, save_dir: str):
     ax.legend(loc="upper right"); ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
     out = os.path.join(save_dir, "method_comparison.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 
@@ -249,6 +283,7 @@ def plot_method_comparison(comparison_data: dict, save_dir: str):
 def plot_fairness(client_accuracies: dict, methods_fairness: dict, save_dir: str):
     if not HAS_MPL:
         return
+    _publication_style()
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
     # Left: per-client accuracy bar chart
@@ -278,7 +313,7 @@ def plot_fairness(client_accuracies: dict, methods_fairness: dict, save_dir: str
     plt.suptitle("Fairness Analysis Across Clients and Methods", fontsize=12, fontweight="bold")
     plt.tight_layout()
     out = os.path.join(save_dir, "fairness_analysis.png")
-    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.savefig(out, dpi=FIGURE_DPI, bbox_inches="tight")
     plt.close()
     logger.info(f"Saved: {out}")
 

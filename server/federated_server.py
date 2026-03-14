@@ -119,7 +119,12 @@ class FederatedServer:
         )
         if global_acc > self.best_acc:
             self.best_acc = global_acc
-            self.save_checkpoint("best_model.pt")
+            try:
+                import config
+                if getattr(config, "SAVE_MODEL_CHECKPOINTS", False):
+                    self.save_checkpoint("best_model.pt")
+            except Exception:
+                pass
             logger.info(f"  NEW BEST: {global_acc:.4f}")
         return rec
 
