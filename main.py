@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import glob
 import logging
 import os
 import sys
@@ -321,6 +322,13 @@ def run_one_method(args, method: str, loaders, models_init, device,
     # ── RL save (optional; disable to keep results zip small) ─────────────────
     if getattr(config, "SAVE_RL_AGENT", False):
         rl.save(os.path.join(method_results_dir, "rl_agent.pt"))
+
+    # ── Remove any model/checkpoint files so results dir has only JSON, CSV, PNG ─
+    for pt_path in glob.glob(os.path.join(method_results_dir, "*.pt")):
+        try:
+            os.remove(pt_path)
+        except OSError:
+            pass
 
     final_pr = dp_map[first_cid].get_privacy_report(
         args.rounds * args.local_epochs,
