@@ -161,10 +161,11 @@ def run_one_method(args, method: str, loaders, models_init, device,
     # ── Server ────────────────────────────────────────────────────────────────
     method_results_dir = os.path.join(args.output_dir, method)
     os.makedirs(method_results_dir, exist_ok=True)
+    first_cid = next(iter(config.DATASET_PATHS))
 
     server = FederatedServer(
-        copy.deepcopy(models_init["client_0"]),
-        dp_map["client_0"], device,
+        copy.deepcopy(models_init[first_cid]),
+        dp_map[first_cid], device,
         results_dir=method_results_dir,
         aggregation_method=method,
         fedprox_mu=config.FEDPROX_MU,
@@ -225,7 +226,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
         prev_acc, prev_st, prev_sel = global_acc, state, sel_idx
 
         sr  = args.batch_size / max(sum(clients[c].dataset_size for c in sel_cids), 1)
-        pr  = dp_map["client_0"].get_privacy_report(rnd * args.local_epochs, sr)
+        pr  = dp_map[first_cid].get_privacy_report(rnd * args.local_epochs, sr)
         eps = pr["epsilon"]
 
         t_elapsed = time.time() - t0
@@ -287,7 +288,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
     # ── FL metrics ────────────────────────────────────────────────────────────
     local_acc_hist = [r["avg_local_acc"] for r in server.round_history]
     model_mb = sum(p.numel() * 4 for p in
-                   list(clients["client_0"].model.parameters())) / 1e6
+                   list(clients[first_cid].model.parameters())) / 1e6
     fl_mets = compute_fl_metrics(
         acc_history, local_acc_hist, selection_history,
         model_mb, time_per_round
@@ -300,7 +301,7 @@ def run_one_method(args, method: str, loaders, models_init, device,
     csv_logger.log_fairness(method, fair)
 
     # ── Computational metrics ─────────────────────────────────────────────────
-    model_params = sum(p.numel() for p in clients["client_0"].model.parameters())
+    model_params = sum(p.numel() for p in clients[first_cid].model.parameters())
     inf_times    = [raw_test[cid]["inference_time_ms"] for cid in raw_test]
     comp = compute_computational_metrics(time_per_round, model_params, inf_times)
     csv_logger.log_computational(comp)
@@ -317,9 +318,9 @@ def run_one_method(args, method: str, loaders, models_init, device,
     # ── RL save ───────────────────────────────────────────────────────────────
     rl.save(os.path.join(method_results_dir, "rl_agent.pt"))
 
-    final_pr = dp_map["client_0"].get_privacy_report(
+    final_pr = dp_map[first_cid].get_privacy_report(
         args.rounds * args.local_epochs,
-        args.batch_size / max(clients["client_0"].dataset_size, 1)
+        args.batch_size / max(clients[first_cid].dataset_size, 1)
     )
     print_final_report(server.round_history, full_metrics,
                        rl.get_selection_stats(), final_pr, method)
@@ -423,15 +424,13 @@ def main(args):
 
     # ── Cross-method comparison plots ─────────────────────────────────────────
     print("\n[4/4] Generating comparison plots...")
-    comp_data = {
-        m: {
-            "global_acc": r["global_acc"],
-            "client_0":   r["full_metrics"]["client_0"]["accuracy"],
-            "client_1":   r["full_metrics"]["client_1"]["accuracy"],
-            "client_2":   r["full_metrics"]["client_2"]["accuracy"],
-        }
-        for m, r in all_results.items()
-    }
+    # One representative client per domain for comparison plot (client_0_0, client_1_0, client_2_0)
+    rep = {"client_0": "client_0_0", "client_1": "client_1_0", "client_2": "client_2_0"}
+    comp_data = {}
+    for m, r in all_results.items():
+        comp_data[m] = {"global_acc": r["global_acc"]}
+        for plot_key, cid in rep.items():
+            comp_data[m][plot_key] = r["full_metrics"].get(cid, {}).get("accuracy", 0.0)
     plot_method_comparison(comp_data, config.RESULTS_DIR)
 
     # Fairness comparison across methods

@@ -46,6 +46,7 @@ def find_alzheimer_root(raw_root):
     candidates = [
         os.path.join(raw_root, "AugmentedAlzheimerDataset", "OriginalDataset"),
         os.path.join(raw_root, "AugmentedAlzheimerDataset"),
+        os.path.join(raw_root, "OriginalDataset"),  # sibling of AugmentedAlzheimerDataset
         os.path.join(raw_root, "augmented-alzheimer-mri-dataset", "OriginalDataset"),
         os.path.join(raw_root, "augmented-alzheimer-mri-dataset"),
     ]
