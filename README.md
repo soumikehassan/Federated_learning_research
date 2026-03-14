@@ -131,6 +131,10 @@ Federated_learning_research/
 ├── main.py                            # Main training loop
 ├── run_all_experiments.py             # Run all paper experiments
 ├── feasibility_test.py                # Quick sanity check
+├── requirements.txt                   # pip install -r requirements.txt
+│
+├── notebooks/                         # Colab: run on Google GPU
+│   └── colab_run_experiments.ipynb   # Open in Colab → Runtime → GPU → Run all
 │
 ├── experiments/                       # Paper experiments (NEW)
 │   ├── README.md                      # Experiment overview
@@ -328,6 +332,39 @@ config.DATASET_PATHS = {
 }
 config.RESULTS_DIR = "/kaggle/working/results"
 ```
+
+---
+
+## Running on Google Colab GPU (from Cursor)
+
+You can run experiments on **Google Colab’s free GPU** while keeping your code in Cursor.
+
+### 1. One-click notebook (recommended)
+
+1. **Push your repo to GitHub** (if you haven’t already).
+2. **Open the Colab notebook** in your browser:
+   - Replace `YOUR_USERNAME` with your GitHub username and open:
+   - **https://colab.research.google.com/github/YOUR_USERNAME/Federated_learning_research/blob/main/notebooks/colab_run_experiments.ipynb**
+   - Or in Cursor: right-click `notebooks/colab_run_experiments.ipynb` → **Open in Colab** (if you have the Colab extension).
+3. In Colab: **Runtime → Change runtime type → GPU (e.g. T4)**.
+4. In the notebook, set `REPO_URL` to your repo (e.g. `https://github.com/YOUR_USERNAME/Federated_learning_research.git`).
+5. Run all cells. The notebook will clone the repo, install dependencies, optionally download datasets from Kaggle, set `COLAB_DATASET_ROOT` / `COLAB_RESULTS_DIR`, and run `main.py`.
+
+Datasets:
+
+- **Option A:** Use Kaggle: add `KAGGLE_USERNAME` and `KAGGLE_KEY` in Colab **Secrets** (🔑 in the left sidebar), and set `USE_KAGGLE = True` in the notebook.
+- **Option B:** Upload the three dataset folders to Google Drive under e.g. `My Drive/datasets/`, set `USE_DRIVE = True`, and set `DATASET_ROOT` to `/content/drive/MyDrive/datasets`.
+
+Results are written to the path in `COLAB_RESULTS_DIR` (e.g. `/content/results` or, with Drive, `/content/drive/MyDrive/fl_results`).
+
+### 2. Workflow: Cursor + Colab
+
+| In Cursor | In Colab |
+|-----------|----------|
+| Edit code, run locally (no GPU or small tests) | Run full experiments on GPU via the notebook |
+| Push to GitHub | Notebook clones/pulls and runs `main.py` or `run_all_experiments.py` |
+
+No need to copy‑paste code: point the notebook at your repo and run.
 
 ---
 

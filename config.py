@@ -13,19 +13,34 @@ import os
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
-# ── Dataset paths ──────────────────────────────────────────────────────────────
-# 6 clients: 2 per domain, each with different Dirichlet alpha (non-IID level)
-DATASET_PATHS = {
-    # Alzheimer MRI clients (4 classes) - moderate non-IID
-    "client_0_0": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
-    "client_0_1": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
-    # Retinal Disease clients (7 classes) - high non-IID
-    "client_1_0": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
-    "client_1_1": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
-    # TB Chest X-Ray clients (2 classes) - mild non-IID
-    "client_2_0": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
-    "client_2_1": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
-}
+# ── Main dataset (Colab / cloud) ──────────────────────────────────────────────
+# After running scripts/prepare_main_dataset.py, set COLAB_DATASET_ROOT to the
+# *main* dataset dir (e.g. /content/main_dataset). All experiments load from there.
+# Optional: MAIN_DATASET_ROOT overrides; COLAB_RESULTS_DIR for results path.
+_MAIN_ROOT = os.environ.get("MAIN_DATASET_ROOT") or os.environ.get("COLAB_DATASET_ROOT")
+if _MAIN_ROOT:
+    _root = _MAIN_ROOT.rstrip(os.sep)
+    RESULTS_DIR = os.environ.get("COLAB_RESULTS_DIR", os.path.join(BASE_DIR, "results"))
+    # Canonical main dataset layout: Alzheimer, Retinal, TB (from prepare_main_dataset.py)
+    DATASET_PATHS = {
+        "client_0_0": os.path.join(_root, "Alzheimer"),
+        "client_0_1": os.path.join(_root, "Alzheimer"),
+        "client_1_0": os.path.join(_root, "Retinal"),
+        "client_1_1": os.path.join(_root, "Retinal"),
+        "client_2_0": os.path.join(_root, "TB"),
+        "client_2_1": os.path.join(_root, "TB"),
+    }
+else:
+    # ── Dataset paths ────────────────────────────────────────────────────────
+    # 6 clients: 2 per domain, each with different Dirichlet alpha (non-IID level)
+    DATASET_PATHS = {
+        "client_0_0": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
+        "client_0_1": r"D:\Federate Learning Coding example\dataset\AugmentedAlzheimerDataset",
+        "client_1_0": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
+        "client_1_1": r"D:\Federate Learning Coding example\dataset\Ratinal_Deasis",
+        "client_2_0": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
+        "client_2_1": r"D:\Federate Learning Coding example\dataset\TB_Chest_Radiography_Database",
+    }
 
 DATASET_NAMES = {
     "client_0_0": "Alzheimer MRI",
