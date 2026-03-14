@@ -69,13 +69,15 @@ def compute_classification_metrics(
         return m
 
     avg = "macro"
-    m["precision"]   = float(precision_score(y_true, y_pred, average=avg, zero_division=0))
-    m["recall"]      = float(recall_score   (y_true, y_pred, average=avg, zero_division=0))
-    m["f1_score"]    = float(f1_score       (y_true, y_pred, average=avg, zero_division=0))
+    n_classes = len(classes) if classes else int(max(np.max(y_true), np.max(y_pred)) + 1)
+    label_set = list(range(n_classes))
+    m["precision"]   = float(precision_score(y_true, y_pred, average=avg, zero_division=0, labels=label_set))
+    m["recall"]      = float(recall_score   (y_true, y_pred, average=avg, zero_division=0, labels=label_set))
+    m["f1_score"]    = float(f1_score       (y_true, y_pred, average=avg, zero_division=0, labels=label_set))
     m["cohen_kappa"] = float(cohen_kappa_score(y_true, y_pred))
 
     # ── Specificity (macro) ───────────────────────────────────────────────────
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, labels=label_set)
     specs = []
     for i in range(len(cm)):
         tn = cm.sum() - cm[i].sum() - cm[:, i].sum() + cm[i, i]
@@ -101,9 +103,9 @@ def compute_classification_metrics(
     m["confusion_matrix"] = cm.tolist()
 
     # ── Per-class breakdown ───────────────────────────────────────────────────
-    if classes:
+    if classes and len(classes) == n_classes:
         report = classification_report(
-            y_true, y_pred, target_names=classes,
+            y_true, y_pred, labels=label_set, target_names=classes,
             output_dict=True, zero_division=0
         )
         m["per_class"] = {
